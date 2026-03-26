@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>alessandria | GASTROMANIA!</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root {
+    --bg: #0e0c09;
+    --surface: #1a1712;
+    --border: #2e2a22;
+    --gold: #c9a84c;
+    --gold-light: #e8c97a;
+    --cream: #f0e6cc;
+    --muted: #7a7060;
+
+    --ristoranti: #4caf82;
+    --pizza: #e05c3a;
+    --pasticcerie: #9b6fd4;
+    --gelati: #5ab4d6;
+    --vino: #c2185b;
+    --birra: #f5b731;
+    --caffe: #1579b0;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--cream);
+    font-family: 'DM Sans', sans-serif;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* HEADER */
+  header {
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    padding: 0 20px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    height: 58px;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1000;
+  }
+
+  .brand {
+    display: flex;
+    flex-direction: column;
+    line-height: 1;
+  }
+  .brand-city {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 9px;
+    font-weight: 300;
+    letter-spacing: 0.3em;
+    color: var(--gold);
+    text-transform: uppercase;
+  }
+  .brand-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 22px;
+    font-weight: 900;
+    color: var(--cream);
+    letter-spacing: 0.02em;
+  }
+  .brand-tagline {
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-top: 1px;
+  }
+
+  /* FILTERS */
+  .filters {
+    display: flex;
+    gap: 6px;
+    flex: 1;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding: 4px 0;
+    align-items: center;
+  }
+  .filters::-webkit-scrollbar { display: none; }
+
+  .filter-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    text-transform: uppercase;
+  }
+  .filter-btn .dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .filter-btn.active {
+    border-color: currentColor;
+    color: var(--cream);
+    background: rgba(255,255,255,0.05);
+  }
+  .filter-btn:hover { opacity: 0.85; }
+
+  .filter-btn.all { color: var(--gold); }
+  .filter-btn.all.active { border-color: var(--gold); background: rgba(201,168,76,0.1); }
+
+  .count-badge {
+    background: rgba(255,255,255,0.1);
+    border-radius: 8px;
+    padding: 1px 5px;
+    font-size: 9px;
+    font-weight: 400;
+  }
+
+  /* LAYOUT */
+  .main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* MAP */
+  #map {
+    flex: 1;
+    background: #1a1812;
+  }
+
+  /* SIDEBAR */
+  .sidebar {
+    width: 260px;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  .sidebar-header {
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .sidebar-title {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    color: var(--gold);
+    text-transform: uppercase;
+    font-weight: 500;
+  }
+  .sidebar-count {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .place-list {
+    overflow-y: auto;
+    flex: 1;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+  .place-list::-webkit-scrollbar { width: 3px; }
+  .place-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .place-item {
+    padding: 10px 16px;
+    border-bottom: 1px solid rgba(46,42,34,0.5);
+    cursor: pointer;
+    transition: background 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .place-item:hover { background: rgba(255,255,255,0.04); }
+  .place-item.highlighted { background: rgba(201,168,76,0.08); }
+
+  .place-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .place-name {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--cream);
+    line-height: 1.3;
+    flex: 1;
+  }
+  .place-cat {
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  /* POPUP */
+  .leaflet-popup-content-wrapper {
+    background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6) !important;
+    padding: 0 !important;
+  }
+  .leaflet-popup-content {
+    margin: 0 !important;
+    width: auto !important;
+    min-width: 180px;
+  }
+  .leaflet-popup-tip { background: var(--surface) !important; }
+  .leaflet-popup-close-button { color: var(--muted) !important; top: 8px !important; right: 10px !important; font-size: 16px !important; }
+
+  .popup-inner {
+    padding: 14px 16px 12px;
+  }
+  .popup-cat {
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    font-weight: 500;
+    margin-bottom: 5px;
+  }
+  .popup-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--cream);
+    line-height: 1.25;
+    margin-bottom: 8px;
+  }
+  .popup-desc {
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+  .popup-desc a { color: var(--gold); text-decoration: none; }
+  .popup-desc a:hover { text-decoration: underline; }
+
+  /* map dark tiles override */
+  .leaflet-tile { filter: brightness(0.85) saturate(0.7); }
+
+  /* footer */
+  footer {
+    height: 26px;
+    background: var(--bg);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0 16px;
+    flex-shrink: 0;
+  }
+  footer span {
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  footer span em { color: var(--gold); font-style: normal; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <span class="brand-city">Alessandria</span>
+    <span class="brand-name">GASTROMANIA!</span>
+    <span class="brand-tagline">Dove mangiare e dove bere. Secondo noi.</span>
+  </div>
+
+  <div class="filters" id="filters">
+    <button class="filter-btn all active" data-cat="all" onclick="filterCat('all',this)">
+      <span class="dot" style="background:var(--gold)"></span>
+      Tutti <span class="count-badge" id="cnt-all">0</span>
+    </button>
+    <button class="filter-btn active" data-cat="RISTORANTI" onclick="filterCat('RISTORANTI',this)" style="color:var(--ristoranti)">
+      <span class="dot" style="background:var(--ristoranti)"></span>
+      Ristoranti <span class="count-badge" id="cnt-RISTORANTI">0</span>
+    </button>
+    <button class="filter-btn active" data-cat="PIZZA" onclick="filterCat('PIZZA',this)" style="color:var(--pizza)">
+      <span class="dot" style="background:var(--pizza)"></span>
+      Pizza · Pane · Pasta <span class="count-badge" id="cnt-PIZZA">0</span>
+    </button>
+    <button class="filter-btn active" data-cat="PASTICCERIE" onclick="filterCat('PASTICCERIE',this)" style="color:var(--pasticcerie)">
+      <span class="dot" style="background:var(--pasticcerie)"></span>
+      Pasticcerie <span class="count-badge" id="cnt-PASTICCERIE">0</span>
+    </button>
+    <button class="filter-btn active" data-cat="GELATI" onclick="filterCat('GELATI',this)" style="color:var(--gelati)">
+      <span class="dot" style="background:var(--gelati)"></span>
+      Gelati <span class="count-badge" id="cnt-GELATI">0</span>
+    </button>
+    <button class="filter-btn active" data-cat="VINO" onclick="filterCat('VINO',this)" style="color:var(--vino)">
+      <span class="dot" style="background:var(--vino)"></span>
+      Vino <span class="count-badge" id="cnt-VINO">0</span>
+    </button>
+    <button class="filter-btn active" data-cat="BIRRA" onclick="filterCat('BIRRA',this)" style="color:var(--birra)">
+      <span class="dot" style="background:var(--birra)"></span>
+      Birra <span class="count-badge" id="cnt-BIRRA">0</span>
+    </button>
+    <button class="filter-btn active" data-cat="CAFFE" onclick="filterCat('CAFFE',this)" style="color:var(--caffe)">
+      <span class="dot" style="background:var(--caffe)"></span>
+      Caffè · Cocktail <span class="count-badge" id="cnt-CAFFE">0</span>
+    </button>
+  </div>
+</header>
+
+<div class="main">
+  <div id="map"></div>
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-title">Locali</div>
+      <div class="sidebar-count" id="sidebar-count">— locali</div>
+    </div>
+    <div class="place-list" id="place-list"></div>
+  </div>
+</div>
+
+<footer>
+  <span>Hotel Londra Alessandria &nbsp;·&nbsp; <em>GASTROMANIA!</em> &nbsp;·&nbsp; aggiornato 2024</span>
+</footer>
+
+<script>
+const PLACES = [
+  // RISTORANTI
+  {name:"AI DUE STORTI", cat:"RISTORANTI", lat:44.9157678, lng:8.6131652, desc:""},
+  {name:"AL PILOTA", cat:"RISTORANTI", lat:44.9244374, lng:8.6229836, desc:""},
+  {name:"AL VECCHIO RIO", cat:"RISTORANTI", lat:44.9260051, lng:8.6229114, desc:""},
+  {name:"ANTICO CAPPELVERDE", cat:"RISTORANTI", lat:44.9139162, lng:8.6215879, desc:""},
+  {name:"ARTERÌA", cat:"RISTORANTI", lat:44.9152719, lng:8.6153344, desc:"facebook.com/ArteriaClub · +39 339 548 0968"},
+  {name:"ASADO", cat:"RISTORANTI", lat:44.9183822, lng:8.6178568, desc:"Ristorante argentino · +39 327 134 2872"},
+  {name:"CREPES L'AVARIZIA", cat:"RISTORANTI", lat:44.9051785, lng:8.6191588, desc:""},
+  {name:"IL GALLO D'ORO", cat:"RISTORANTI", lat:44.9149671, lng:8.614113, desc:""},
+  {name:"IL MOSCARDO", cat:"RISTORANTI", lat:44.9173487, lng:8.6139652, desc:"facebook.com/IlMoscardo.foodandbooks · +39 375 502 3734"},
+  {name:"IL VICOLETTO", cat:"RISTORANTI", lat:44.9126143, lng:8.6179595, desc:"+39 0131 261578"},
+  {name:"ISMAIL CUCINA ARABA", cat:"RISTORANTI", lat:44.9110307, lng:8.6161056, desc:""},
+  {name:"ITACA", cat:"RISTORANTI", lat:44.9182461, lng:8.6185953, desc:""},
+  {name:"L'AGRICOLA STEAKHOUSE", cat:"RISTORANTI", lat:44.9056951, lng:8.6280492, desc:""},
+  {name:"LA PIOLA", cat:"RISTORANTI", lat:44.9264575, lng:8.6176481, desc:""},
+  {name:"MOONSHINE CAFE", cat:"RISTORANTI", lat:44.919277, lng:8.6168952, desc:"moonshinecafe.it · +39 0131 350882"},
+  {name:"ORTO ZERO", cat:"RISTORANTI", lat:44.9174902, lng:8.615539, desc:""},
+  {name:"OSTERIA BEL'OMBRA", cat:"RISTORANTI", lat:44.9168015, lng:8.6107456, desc:""},
+  {name:"OSTERIA DELLA LUNA IN BRODO", cat:"RISTORANTI", lat:44.910212, lng:8.61272, desc:""},
+  {name:"OSTERIA DEL VINACCIOLO", cat:"RISTORANTI", lat:44.9131689, lng:8.61205, desc:""},
+  {name:"RISTORANTE DELL'OLMO", cat:"RISTORANTI", lat:44.8808913, lng:8.5750365, desc:""},
+  {name:"RISTORANTE DUOMO", cat:"RISTORANTI", lat:44.9122513, lng:8.6187322, desc:"ristorante-duomo.com · +39 0131 52631"},
+  {name:"RISTORANTE NAPOLEON", cat:"RISTORANTI", lat:44.9141315, lng:8.6120399, desc:""},
+  {name:"RISTORANTE ZEN", cat:"RISTORANTI", lat:44.9133488, lng:8.6185243, desc:""},
+  {name:"SUSHI WEN", cat:"RISTORANTI", lat:44.9122175, lng:8.6152715, desc:""},
+  {name:"SUSHIKO ALESSANDRIA", cat:"RISTORANTI", lat:44.9173812, lng:8.5996074, desc:""},
+  {name:"SUSHI ZERO", cat:"RISTORANTI", lat:44.9080193, lng:8.6349485, desc:""},
+  {name:"SWAGAT", cat:"RISTORANTI", lat:44.916111, lng:8.610823, desc:""},
+  {name:"TRATTORIA IL PALADINO", cat:"RISTORANTI", lat:44.9052119, lng:8.6139615, desc:""},
+  // PIZZA PANE PASTA
+  {name:"BARBAROSSA BISTROT", cat:"PIZZA", lat:44.9082078, lng:8.6124779, desc:""},
+  {name:"IL MULINO", cat:"PIZZA", lat:44.9147542, lng:8.6184552, desc:""},
+  {name:"IL PIZZ'INO", cat:"PIZZA", lat:44.91324, lng:8.61442, desc:""},
+  {name:"KUUK PIZZA", cat:"PIZZA", lat:44.9165145, lng:8.6104926, desc:""},
+  {name:"LA GHIOTTOSA", cat:"PIZZA", lat:44.920009, lng:8.6131005, desc:""},
+  {name:"LA POLIGONIA", cat:"PIZZA", lat:44.9259723, lng:8.6191706, desc:""},
+  {name:"PIZZA STUDIOS", cat:"PIZZA", lat:44.9196667, lng:8.6183598, desc:""},
+  {name:"PIZZERIA RISTORANTE CAPRI", cat:"PIZZA", lat:44.9098988, lng:8.6126817, desc:"pizzeriaristorantecapri.it · 0131231990"},
+  {name:"PIZZERIA IL SARACENO", cat:"PIZZA", lat:44.9100661, lng:8.6090242, desc:""},
+  {name:"PIZZERIA SOLELUNA", cat:"PIZZA", lat:44.9136105, lng:8.6247327, desc:""},
+  {name:"PIZZERIA RISTORANTE STADIO", cat:"PIZZA", lat:44.9194881, lng:8.6150671, desc:""},
+  {name:"ROGER'S PIZZA", cat:"PIZZA", lat:44.9180368, lng:8.6144708, desc:"facebook.com/RogersPizza · +39 0131 224036"},
+  {name:"ROXY45 PIZZA", cat:"PIZZA", lat:44.9176979, lng:8.6157107, desc:""},
+  {name:"STRAPIZZAMI", cat:"PIZZA", lat:44.9252725, lng:8.6226746, desc:""},
+  {name:"IL MULINO DI ALESSANDRIA", cat:"PIZZA", lat:44.919417, lng:8.6156624, desc:"Panetteria, focacceria, pizza al taglio · aperto 24/7 · 0131482001"},
+  {name:"PANIFICIO BRUNO", cat:"PIZZA", lat:44.9195747, lng:8.6174097, desc:""},
+  {name:"SANDRONI ALESSANDRIA", cat:"PIZZA", lat:44.9144546, lng:8.6098508, desc:""},
+  {name:"PASTA FRESCA LA MODERNA", cat:"PIZZA", lat:44.910755, lng:8.6134017, desc:""},
+  {name:"PASTIFICIO PIEMONTESE", cat:"PIZZA", lat:44.918786, lng:8.6180514, desc:""},
+  {name:"PASTA FRESCA VERMIGLI", cat:"PIZZA", lat:44.9102941, lng:8.6210794, desc:""},
+  // PASTICCERIE
+  {name:"MAISON ANTONELLA | ANTONELLA DOLCI", cat:"PASTICCERIE", lat:44.908432, lng:8.6130571, desc:""},
+  {name:"PASTICCERIA BONADEO", cat:"PASTICCERIE", lat:44.9130221, lng:8.6144056, desc:""},
+  {name:"PASTICCERIA GALLINA", cat:"PASTICCERIE", lat:44.9146885, lng:8.6122993, desc:""},
+  {name:"PASTICCERIA LA DOLCE VITO", cat:"PASTICCERIE", lat:44.8861859, lng:8.6801325, desc:""},
+  {name:"PASTICCERIA CAFFETTERIA CIOCCOLATERIA MEZZARO", cat:"PASTICCERIE", lat:44.9100816, lng:8.6158735, desc:""},
+  {name:"PASTICCERIA ROLANDO", cat:"PASTICCERIE", lat:44.9153546, lng:8.6165713, desc:""},
+  {name:"PASTICCERIA ZOCCOLA", cat:"PASTICCERIE", lat:44.9112938, lng:8.6212636, desc:""},
+  {name:"ROVIDA SIGNORELLI", cat:"PASTICCERIE", lat:44.9090689, lng:8.6141768, desc:""},
+  // GELATI
+  {name:"CASA DEL GELATO", cat:"GELATI", lat:44.9099104, lng:8.6132247, desc:""},
+  {name:"GELATERIA CERCENÀ", cat:"GELATI", lat:44.9098251, lng:8.6103026, desc:""},
+  {name:"GELATERIA FELICE", cat:"GELATI", lat:44.9137502, lng:8.6276401, desc:""},
+  {name:"GELATERIA PIERUZ", cat:"GELATI", lat:44.9120106, lng:8.6219278, desc:""},
+  // VINO
+  {name:"ENOTECA BOIDO", cat:"VINO", lat:44.9109347, lng:8.6130939, desc:""},
+  {name:"ENOTECA IL VINODROMO", cat:"VINO", lat:44.9148733, lng:8.6102417, desc:""},
+  {name:"ENOTECA IN VINO VERITAS", cat:"VINO", lat:44.9124055, lng:8.620022, desc:""},
+  {name:"ENOTECA LUCI SUL VINO", cat:"VINO", lat:44.909425, lng:8.6126916, desc:""},
+  {name:"FERMENTO WINE BAR", cat:"VINO", lat:44.9123658, lng:8.6088715, desc:""},
+  {name:"VINERIA MEZZO-LITRO", cat:"VINO", lat:44.9174791, lng:8.6118845, desc:""},
+  {name:"ENOTECA DA MARIO", cat:"VINO", lat:44.9022882, lng:8.6063569, desc:""},
+  // BIRRA
+  {name:"AIP INDIPENDENT PUB", cat:"BIRRA", lat:44.9150396, lng:8.617616, desc:""},
+  {name:"BRITANNIA PUB", cat:"BIRRA", lat:44.9205288, lng:8.6146796, desc:""},
+  {name:"CANEDIGUERRA", cat:"BIRRA", lat:44.9133472, lng:8.607105, desc:""},
+  {name:"HOP - MANGIARE DI BIRRA", cat:"BIRRA", lat:44.9142228, lng:8.6106802, desc:""},
+  {name:"JOHN'S UNIVERSITY PUB", cat:"BIRRA", lat:44.908239, lng:8.6149873, desc:""},
+  {name:"MAG MELL IRISH PUB", cat:"BIRRA", lat:44.8972392, lng:8.5992093, desc:""},
+  // CAFFE COCKTAIL
+  {name:"ANDANDO E STANDO", cat:"CAFFE", lat:44.9150192, lng:8.6128772, desc:"Libreria con mescita golosa"},
+  {name:"AROMATICO | cocktail & bistrot", cat:"CAFFE", lat:44.9097646, lng:8.6104489, desc:""},
+  {name:"CAFFÈ DEGLI ARTISTI", cat:"CAFFE", lat:44.9142273, lng:8.6135052, desc:""},
+  {name:"BAR GIPSY'S", cat:"CAFFE", lat:44.9014359, lng:8.6194696, desc:""},
+  {name:"CAFFÈ DEI PARODI", cat:"CAFFE", lat:44.8993523, lng:8.6214765, desc:""},
+  {name:"CASA SIGNORELLI", cat:"CAFFE", lat:44.9136736, lng:8.6152798, desc:""},
+  {name:"DI NOI TRE", cat:"CAFFE", lat:44.9152662, lng:8.6168938, desc:""},
+  {name:"EL CHIRINGUITO", cat:"CAFFE", lat:44.9076566, lng:8.6244404, desc:""},
+  {name:"iBAR", cat:"CAFFE", lat:44.9097454, lng:8.6106441, desc:""},
+  {name:"INN ALE CAFÈ", cat:"CAFFE", lat:44.9131424, lng:8.6189677, desc:""},
+  {name:"MELCHIONNI CAFÈ", cat:"CAFFE", lat:44.9146624, lng:8.6153248, desc:""},
+  {name:"SPIRITOH", cat:"CAFFE", lat:44.914184, lng:8.6134284, desc:"spiritoh.it"},
+  {name:"TIP TAP", cat:"CAFFE", lat:44.9123551, lng:8.6182111, desc:""},
+  {name:"TRENOBAR", cat:"CAFFE", lat:44.9163734, lng:8.6071303, desc:""},
+];
+
+const CAT_COLORS = {
+  RISTORANTI: "#4caf82",
+  PIZZA:      "#e05c3a",
+  PASTICCERIE:"#9b6fd4",
+  GELATI:     "#5ab4d6",
+  VINO:       "#c2185b",
+  BIRRA:      "#f5b731",
+  CAFFE:      "#1579b0",
+};
+
+const CAT_LABELS = {
+  RISTORANTI: "Ristoranti",
+  PIZZA:      "Pizza · Pane · Pasta",
+  PASTICCERIE:"Pasticcerie",
+  GELATI:     "Gelati",
+  VINO:       "Vino",
+  BIRRA:      "Birra",
+  CAFFE:      "Caffè · Cocktail",
+};
+
+// Init map
+const map = L.map('map', {
+  center: [44.9130, 8.6160],
+  zoom: 15,
+  zoomControl: false,
+});
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; <a href="https://carto.com/">CARTO</a>',
+  subdomains: 'abcd',
+  maxZoom: 19
+}).addTo(map);
+
+L.control.zoom({ position: 'topleft' }).addTo(map);
+
+// Build markers
+const markers = [];
+const layerGroups = {};
+Object.keys(CAT_COLORS).forEach(c => layerGroups[c] = L.layerGroup().addTo(map));
+
+function makeIcon(color) {
+  return L.divIcon({
+    className: '',
+    html: `<div style="
+      width:12px;height:12px;
+      background:${color};
+      border-radius:50%;
+      border:2px solid rgba(255,255,255,0.25);
+      box-shadow:0 0 0 3px ${color}33, 0 2px 8px rgba(0,0,0,0.5);
+    "></div>`,
+    iconSize: [12,12],
+    iconAnchor: [6,6],
+    popupAnchor: [0,-10],
+  });
+}
+
+PLACES.forEach((p, i) => {
+  const color = CAT_COLORS[p.cat];
+  const marker = L.marker([p.lat, p.lng], { icon: makeIcon(color) });
+
+  const descHtml = p.desc
+    ? `<div class="popup-desc">${p.desc.replace(/(https?:\/\/\S+|www\.\S+)/g, u => `<a href="${u.startsWith('http')?u:'https://'+u}" target="_blank">${u}</a>`)}</div>`
+    : '';
+
+  marker.bindPopup(`
+    <div class="popup-inner">
+      <div class="popup-cat" style="color:${color}">${CAT_LABELS[p.cat]}</div>
+      <div class="popup-name">${p.name}</div>
+      ${descHtml}
+    </div>
+  `, { maxWidth: 240, className: '' });
+
+  marker.on('click', () => highlightItem(i));
+  layerGroups[p.cat].addLayer(marker);
+  markers.push({ marker, data: p, index: i });
+});
+
+// Sidebar
+function buildList(filter) {
+  const list = document.getElementById('place-list');
+  list.innerHTML = '';
+  const filtered = filter === 'all'
+    ? PLACES
+    : PLACES.filter(p => p.cat === filter);
+
+  document.getElementById('sidebar-count').textContent = `${filtered.length} local${filtered.length !== 1 ? 'i' : 'e'}`;
+
+  const allItems = [];
+  filtered.forEach((p, localIndex) => {
+    const globalIndex = PLACES.indexOf(p);
+    const color = CAT_COLORS[p.cat];
+    const item = document.createElement('div');
+    item.className = 'place-item';
+    item.id = `item-${globalIndex}`;
+    item.innerHTML = `
+      <div class="place-dot" style="background:${color}"></div>
+      <div>
+        <div class="place-name">${p.name}</div>
+        ${filter === 'all' ? `<div class="place-cat">${CAT_LABELS[p.cat]}</div>` : ''}
+      </div>
+    `;
+    item.addEventListener('click', () => {
+      map.setView([p.lat, p.lng], 17, {animate:true});
+      markers[globalIndex].marker.openPopup();
+      highlightItem(globalIndex);
+    });
+    list.appendChild(item);
+    allItems.push(item);
+  });
+}
+
+function highlightItem(globalIndex) {
+  document.querySelectorAll('.place-item').forEach(el => el.classList.remove('highlighted'));
+  const el = document.getElementById(`item-${globalIndex}`);
+  if (el) {
+    el.classList.add('highlighted');
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+}
+
+// Counts
+const counts = {};
+Object.keys(CAT_COLORS).forEach(c => counts[c] = 0);
+PLACES.forEach(p => counts[p.cat]++);
+document.getElementById('cnt-all').textContent = PLACES.length;
+Object.keys(counts).forEach(c => {
+  const el = document.getElementById('cnt-' + c);
+  if (el) el.textContent = counts[c];
+});
+
+// Filter logic
+const activeFilters = new Set(Object.keys(CAT_COLORS));
+let currentSidebarCat = 'all';
+
+function filterCat(cat, btn) {
+  if (cat === 'all') {
+    // Toggle: if all active → deactivate all except click → or activate all
+    const allActive = activeFilters.size === Object.keys(CAT_COLORS).length;
+    if (allActive) {
+      // nothing to do – clicking "tutti" when all are on is a no-op or reset
+      return;
+    }
+    // Activate all
+    activeFilters.clear();
+    Object.keys(CAT_COLORS).forEach(c => activeFilters.add(c));
+    document.querySelectorAll('.filter-btn:not(.all)').forEach(b => b.classList.add('active'));
+    btn.classList.add('active');
+  } else {
+    if (activeFilters.has(cat)) {
+      activeFilters.delete(cat);
+      btn.classList.remove('active');
+      layerGroups[cat].remove();
+    } else {
+      activeFilters.add(cat);
+      btn.classList.add('active');
+      layerGroups[cat].addTo(map);
+    }
+    const allBtn = document.querySelector('.filter-btn.all');
+    if (activeFilters.size === Object.keys(CAT_COLORS).length) {
+      allBtn.classList.add('active');
+    } else {
+      allBtn.classList.remove('active');
+    }
+  }
+
+  // Rebuild sidebar showing only active cats
+  const listFilter = activeFilters.size === 1 ? [...activeFilters][0] : 'all';
+  buildList(activeFilters.size === Object.keys(CAT_COLORS).length ? 'all' : listFilter);
+}
+
+// Init
+buildList('all');
+</script>
+</body>
+</html>
