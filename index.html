@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>alessandria | GASTROMANIA!</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@300;400;600;700;900&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20,400,1,0" rel="stylesheet"/>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -33,7 +33,7 @@
   body {
     background: var(--bg);
     color: var(--cream);
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'Titillium Web', sans-serif;
     height: 100vh;
     display: flex;
     flex-direction: column;
@@ -56,11 +56,18 @@
 
   .brand {
     display: flex;
+    flex-direction: row;
+    align-items: center;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+  .brand > div {
+    display: flex;
     flex-direction: column;
     line-height: 1;
   }
   .brand-city {
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'Titillium Web', sans-serif;
     font-size: 9px;
     font-weight: 300;
     letter-spacing: 0.3em;
@@ -68,7 +75,7 @@
     text-transform: uppercase;
   }
   .brand-name {
-    font-family: 'Playfair Display', serif;
+    font-family: 'Titillium Web', sans-serif;
     font-size: 22px;
     font-weight: 900;
     color: var(--cream);
@@ -286,9 +293,12 @@
 
 <header>
   <div class="brand">
-    <span class="brand-city">Alessandria</span>
-    <span class="brand-name">GASTROMANIA!</span>
-    <span class="brand-tagline">Where to eat and where to drink. According to us.</span>
+    <img id="hotel-logo" src="" alt="Hotel Londra Alessandria" style="height:36px;display:none;margin-right:10px;">
+    <div>
+      <span class="brand-city">Alessandria</span>
+      <span class="brand-name">GASTROMANIA!</span>
+      <span class="brand-tagline">Where to eat and where to drink. According to us.</span>
+    </div>
   </div>
 
   <div class="filters" id="filters">
@@ -542,14 +552,22 @@ PLACES.forEach((p, i) => {
 function buildList(filter) {
   const list = document.getElementById('place-list');
   list.innerHTML = '';
-  const filtered = filter === 'all'
-    ? PLACES
-    : PLACES.filter(p => p.cat === filter);
+
+  let filtered;
+  if (filter === 'none') {
+    filtered = [];
+  } else if (filter === 'all') {
+    filtered = PLACES;
+  } else if (filter === 'multi') {
+    filtered = PLACES.filter(p => activeFilters.has(p.cat));
+  } else {
+    filtered = PLACES.filter(p => p.cat === filter);
+  }
 
   document.getElementById('sidebar-count').textContent = `${filtered.length} local${filtered.length !== 1 ? 'i' : 'e'}`;
 
   const allItems = [];
-  filtered.forEach((p, localIndex) => {
+  filtered.forEach((p) => {
     const globalIndex = PLACES.indexOf(p);
     const color = CAT_COLORS[p.cat];
     const item = document.createElement('div');
@@ -559,7 +577,7 @@ function buildList(filter) {
       <div class="place-dot" style="background:${color}"></div>
       <div>
         <div class="place-name">${p.name}</div>
-        ${filter === 'all' ? `<div class="place-cat">${CAT_LABELS_SHORT[p.cat]}</div>` : ''}
+        ${filter !== filter || activeFilters.size !== 1 ? `<div class="place-cat">${CAT_LABELS_SHORT[p.cat]}</div>` : ''}
       </div>
     `;
     item.addEventListener('click', () => {
@@ -593,21 +611,48 @@ Object.keys(counts).forEach(c => {
 
 // Filter logic
 const activeFilters = new Set(Object.keys(CAT_COLORS));
-let currentSidebarCat = 'all';
+
+function syncAllBtn() {
+  const allBtn = document.querySelector('.filter-btn.all');
+  if (activeFilters.size === Object.keys(CAT_COLORS).length) {
+    allBtn.classList.add('active');
+  } else if (activeFilters.size === 0) {
+    allBtn.classList.remove('active');
+  } else {
+    allBtn.classList.remove('active');
+  }
+}
+
+function rebuildSidebar() {
+  if (activeFilters.size === 0) {
+    buildList('none');
+  } else if (activeFilters.size === Object.keys(CAT_COLORS).length) {
+    buildList('all');
+  } else if (activeFilters.size === 1) {
+    buildList([...activeFilters][0]);
+  } else {
+    buildList('multi');
+  }
+}
 
 function filterCat(cat, btn) {
   if (cat === 'all') {
-    // Toggle: if all active → deactivate all except click → or activate all
     const allActive = activeFilters.size === Object.keys(CAT_COLORS).length;
     if (allActive) {
-      // nothing to do – clicking "tutti" when all are on is a no-op or reset
-      return;
+      // Deselect all
+      activeFilters.clear();
+      Object.keys(CAT_COLORS).forEach(c => layerGroups[c].remove());
+      document.querySelectorAll('.filter-btn:not(.all)').forEach(b => b.classList.remove('active'));
+      btn.classList.remove('active');
+    } else {
+      // Select all
+      Object.keys(CAT_COLORS).forEach(c => {
+        activeFilters.add(c);
+        layerGroups[c].addTo(map);
+      });
+      document.querySelectorAll('.filter-btn:not(.all)').forEach(b => b.classList.add('active'));
+      btn.classList.add('active');
     }
-    // Activate all
-    activeFilters.clear();
-    Object.keys(CAT_COLORS).forEach(c => activeFilters.add(c));
-    document.querySelectorAll('.filter-btn:not(.all)').forEach(b => b.classList.add('active'));
-    btn.classList.add('active');
   } else {
     if (activeFilters.has(cat)) {
       activeFilters.delete(cat);
@@ -618,18 +663,16 @@ function filterCat(cat, btn) {
       btn.classList.add('active');
       layerGroups[cat].addTo(map);
     }
-    const allBtn = document.querySelector('.filter-btn.all');
-    if (activeFilters.size === Object.keys(CAT_COLORS).length) {
-      allBtn.classList.add('active');
-    } else {
-      allBtn.classList.remove('active');
-    }
+    syncAllBtn();
   }
-
-  // Rebuild sidebar showing only active cats
-  const listFilter = activeFilters.size === 1 ? [...activeFilters][0] : 'all';
-  buildList(activeFilters.size === Object.keys(CAT_COLORS).length ? 'all' : listFilter);
+  rebuildSidebar();
 }
+
+// Logo
+const logoEl = document.getElementById('hotel-logo');
+logoEl.src = 'logo.png';
+logoEl.onload = () => { logoEl.style.display = 'block'; };
+logoEl.onerror = () => { logoEl.style.display = 'none'; };
 
 // Init
 buildList('all');
