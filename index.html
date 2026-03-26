@@ -257,7 +257,8 @@
   .popup-desc a { color: var(--gold); text-decoration: none; }
   .popup-desc a:hover { text-decoration: underline; }
 
-  /* map tiles */
+  .leaflet-div-icon { background: none !important; border: none !important; box-shadow: none !important; }
+  .leaflet-marker-shadow { display: none !important; }
   .leaflet-tile { filter: brightness(1) saturate(0.85); }
 
   /* footer */
@@ -292,11 +293,11 @@
   <div class="filters" id="filters">
     <button class="filter-btn all active" data-cat="all" onclick="filterCat('all',this)">
       <span class="dot" style="background:var(--gold)"></span>
-      Tutti <span class="count-badge" id="cnt-all">0</span>
+      Tutti / All <span class="count-badge" id="cnt-all">0</span>
     </button>
     <button class="filter-btn active" data-cat="RISTORANTI" onclick="filterCat('RISTORANTI',this)" style="color:var(--ristoranti)">
       <span class="dot" style="background:var(--ristoranti)"></span>
-      Ristoranti <span class="count-badge" id="cnt-RISTORANTI">0</span>
+      Ristoranti / Restaurants <span class="count-badge" id="cnt-RISTORANTI">0</span>
     </button>
     <button class="filter-btn active" data-cat="PIZZA" onclick="filterCat('PIZZA',this)" style="color:var(--pizza)">
       <span class="dot" style="background:var(--pizza)"></span>
@@ -304,23 +305,23 @@
     </button>
     <button class="filter-btn active" data-cat="PASTICCERIE" onclick="filterCat('PASTICCERIE',this)" style="color:var(--pasticcerie)">
       <span class="dot" style="background:var(--pasticcerie)"></span>
-      Pasticcerie <span class="count-badge" id="cnt-PASTICCERIE">0</span>
+      Pasticcerie / Pastry Shops <span class="count-badge" id="cnt-PASTICCERIE">0</span>
     </button>
     <button class="filter-btn active" data-cat="GELATI" onclick="filterCat('GELATI',this)" style="color:var(--gelati)">
       <span class="dot" style="background:var(--gelati)"></span>
-      Gelati <span class="count-badge" id="cnt-GELATI">0</span>
+      Gelati / Ice Cream <span class="count-badge" id="cnt-GELATI">0</span>
     </button>
     <button class="filter-btn active" data-cat="VINO" onclick="filterCat('VINO',this)" style="color:var(--vino)">
       <span class="dot" style="background:var(--vino)"></span>
-      Vino <span class="count-badge" id="cnt-VINO">0</span>
+      Vino / Wine <span class="count-badge" id="cnt-VINO">0</span>
     </button>
     <button class="filter-btn active" data-cat="BIRRA" onclick="filterCat('BIRRA',this)" style="color:var(--birra)">
       <span class="dot" style="background:var(--birra)"></span>
-      Birra <span class="count-badge" id="cnt-BIRRA">0</span>
+      Birra / Beer <span class="count-badge" id="cnt-BIRRA">0</span>
     </button>
     <button class="filter-btn active" data-cat="CAFFE" onclick="filterCat('CAFFE',this)" style="color:var(--caffe)">
       <span class="dot" style="background:var(--caffe)"></span>
-      Caffè · Cocktail <span class="count-badge" id="cnt-CAFFE">0</span>
+      Caffè · Cocktail & Spirits <span class="count-badge" id="cnt-CAFFE">0</span>
     </button>
   </div>
 </header>
@@ -329,7 +330,7 @@
   <div id="map"></div>
   <div class="sidebar">
     <div class="sidebar-header">
-      <div class="sidebar-title">Locali</div>
+      <div class="sidebar-title">Locali / Places</div>
       <div class="sidebar-count" id="sidebar-count">— locali</div>
     </div>
     <div class="place-list" id="place-list"></div>
@@ -449,12 +450,22 @@ const CAT_COLORS = {
 };
 
 const CAT_LABELS = {
-  RISTORANTI: "Ristoranti",
-  PIZZA:      "Pizza · Pane · Pasta",
-  PASTICCERIE:"Pasticcerie",
-  GELATI:     "Gelati",
-  VINO:       "Vino",
-  BIRRA:      "Birra",
+  RISTORANTI: "Ristoranti / Restaurants",
+  PIZZA:      "Pizza · Pane · Pasta / Pizza · Bread · Pasta",
+  PASTICCERIE:"Pasticcerie / Pastry Shops",
+  GELATI:     "Gelati / Ice Cream",
+  VINO:       "Vino / Wine",
+  BIRRA:      "Birra / Beer",
+  CAFFE:      "Caffè · Cocktail & Spirits",
+};
+
+const CAT_LABELS_SHORT = {
+  RISTORANTI: "Restaurants",
+  PIZZA:      "Pizza · Bread · Pasta",
+  PASTICCERIE:"Pastry Shops",
+  GELATI:     "Ice Cream",
+  VINO:       "Wine",
+  BIRRA:      "Beer",
   CAFFE:      "Caffè · Cocktail",
 };
 
@@ -482,15 +493,14 @@ function makeIcon(color) {
   return L.divIcon({
     className: '',
     html: `<div style="
-      width:11px;height:11px;
+      width:16px;height:16px;
       background:${color};
       border-radius:50%;
-      border:2px solid rgba(255,255,255,0.6);
-      box-shadow:0 1px 4px rgba(0,0,0,0.4);
+      border:2px solid rgba(255,255,255,0.7);
     "></div>`,
-    iconSize: [12,12],
-    iconAnchor: [6,6],
-    popupAnchor: [0,-10],
+    iconSize: [16,16],
+    iconAnchor: [8,8],
+    popupAnchor: [0,-12],
   });
 }
 
@@ -504,7 +514,7 @@ PLACES.forEach((p, i) => {
 
   marker.bindPopup(`
     <div class="popup-inner">
-      <div class="popup-cat" style="color:${color}">${CAT_LABELS[p.cat]}</div>
+      <div class="popup-cat" style="color:${color}">${CAT_LABELS_SHORT[p.cat]}</div>
       <div class="popup-name">${p.name}</div>
       ${descHtml}
     </div>
@@ -536,7 +546,7 @@ function buildList(filter) {
       <div class="place-dot" style="background:${color}"></div>
       <div>
         <div class="place-name">${p.name}</div>
-        ${filter === 'all' ? `<div class="place-cat">${CAT_LABELS[p.cat]}</div>` : ''}
+        ${filter === 'all' ? `<div class="place-cat">${CAT_LABELS_SHORT[p.cat]}</div>` : ''}
       </div>
     `;
     item.addEventListener('click', () => {
