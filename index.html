@@ -266,7 +266,13 @@
     color: var(--muted);
     line-height: 1.5;
   }
-  .popup-desc a { color: var(--gold); text-decoration: none; }
+  .popup-details { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+  .popup-row { font-size: 11px; color: var(--muted); line-height: 1.4; }
+  .popup-row a { color: var(--gold); text-decoration: none; }
+  .popup-row a:hover { text-decoration: underline; }
+  .popup-hours.open { color: #7bc8a4; }
+  .popup-hours.closed { color: #f4907a; }
+  .popup-loading { font-style: italic; }
   .popup-desc a:hover { text-decoration: underline; }
 
   .leaflet-div-icon { background: none !important; border: none !important; box-shadow: none !important; }
@@ -545,9 +551,12 @@ PLACES.forEach((p, i) => {
       <div class="popup-name">${p.name}</div>
       ${descHtml}
     </div>
-  `, { maxWidth: 240, className: '' });
+  `, { maxWidth: 260, className: '' });
 
-  marker.on('click', () => highlightItem(i));
+  marker.on('click', () => {
+    highlightItem(i);
+    openPlacesPopup(marker, p);
+  });
   layerGroups[p.cat].addLayer(marker);
   markers.push({ marker, data: p, index: i });
 });
@@ -672,7 +681,105 @@ function filterCat(cat, btn) {
   rebuildSidebar();
 }
 
-// Logo
+// ⚠️ INSERISCI QUI LA TUA API KEY GOOGLE
+const GOOGLE_API_KEY = 'AIzaSyCcAOdkcPOuro4tvhff1WWQsRmke1loRwg';
+
+// Google Places lookup
+function fetchPlaceDetails(placeName, lat, lng, popupEl) {
+  const url = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${encodeURIComponent(placeName)}&inputtype=textquery&locationbias=point:${lat},${lng}&fields=place_id&key=${GOOGLE_API_KEY}`;
+  // Note: direct Places API calls from browser require proxy due to CORS.
+  // We use the Places JS library instead (loaded below).
+}
+
+// Load Google Maps JS API with Places library
+(function loadGoogleMaps() {
+  const script = document.createElement('script');
+  script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_API_KEY}&libraries=places&callback=initPlacesService`;
+  script.async = true;
+  script.defer = true;
+  document.head.appendChild(script);
+})();
+
+let placesService = null;
+function initPlacesService() {
+  // Create a dummy map element for PlacesService
+  const dummy = document.createElement('div');
+  const gmap = new google.maps.Map(dummy);
+  placesService = new google.maps.places.PlacesService(gmap);
+}
+
+function openPlacesPopup(marker, p) {
+  const color = CAT_COLORS[p.cat];
+  if (!placesService) {
+    marker.bindPopup(`
+      <div class="popup-inner">
+        <div class="popup-cat" style="color:${color}">${CAT_LABELS_SHORT[p.cat]}</div>
+        <div class="popup-name">${p.name}</div>
+        <div class="popup-desc">Caricamento info...</div>
+      </div>
+    `, { maxWidth: 260 }).openPopup();
+    return;
+  }
+
+  // Show loading state immediately
+  marker.bindPopup(`
+    <div class="popup-inner">
+      <div class="popup-cat" style="color:${color}">${CAT_LABELS_SHORT[p.cat]}</div>
+      <div class="popup-name">${p.name}</div>
+      <div class="popup-desc popup-loading">⏳ Caricamento...</div>
+    </div>
+  `, { maxWidth: 260 }).openPopup();
+
+  const request = {
+    query: p.name + ' Alessandria',
+    fields: ['place_id', 'name', 'formatted_address', 'formatted_phone_number', 'website', 'opening_hours', 'rating', 'user_ratings_total'],
+    locationBias: new google.maps.LatLng(p.lat, p.lng),
+  };
+
+  placesService.findPlaceFromQuery(request, (results, status) => {
+    if (status !== google.maps.places.PlacesServiceStatus.OK || !results[0]) {
+      marker.getPopup().setContent(`
+        <div class="popup-inner">
+          <div class="popup-cat" style="color:${color}">${CAT_LABELS_SHORT[p.cat]}</div>
+          <div class="popup-name">${p.name}</div>
+        </div>
+      `);
+      return;
+    }
+
+    placesService.getDetails({
+      placeId: results[0].place_id,
+      fields: ['name','formatted_address','formatted_phone_number','website','opening_hours','rating','user_ratings_total']
+    }, (place, detailStatus) => {
+      if (detailStatus !== google.maps.places.PlacesServiceStatus.OK) return;
+
+      const addr = place.formatted_address
+        ? `<div class="popup-row">📍 ${place.formatted_address.replace(', Italia','').replace(', Italy','')}</div>` : '';
+      const phone = place.formatted_phone_number
+        ? `<div class="popup-row">📞 <a href="tel:${place.formatted_phone_number}">${place.formatted_phone_number}</a></div>` : '';
+      const web = place.website
+        ? `<div class="popup-row">🌐 <a href="${place.website}" target="_blank">${new URL(place.website).hostname.replace('www.','')}</a></div>` : '';
+      const rating = place.rating
+        ? `<div class="popup-row">⭐ ${place.rating} <span style="color:var(--muted)">(${place.user_ratings_total} recensioni)</span></div>` : '';
+
+      let hours = '';
+      if (place.opening_hours) {
+        const isOpen = place.opening_hours.isOpen();
+        hours = `<div class="popup-row popup-hours ${isOpen ? 'open' : 'closed'}">${isOpen ? '🟢 Aperto ora' : '🔴 Chiuso ora'}</div>`;
+      }
+
+      marker.getPopup().setContent(`
+        <div class="popup-inner">
+          <div class="popup-cat" style="color:${color}">${CAT_LABELS_SHORT[p.cat]}</div>
+          <div class="popup-name">${p.name}</div>
+          <div class="popup-details">
+            ${rating}${hours}${addr}${phone}${web}
+          </div>
+        </div>
+      `);
+    });
+  });
+}
 const logoEl = document.getElementById('hotel-logo');
 logoEl.src = 'logo.png';
 logoEl.onload = () => { logoEl.style.display = 'block'; };
