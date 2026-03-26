@@ -18,13 +18,13 @@
     --cream: #f0e6cc;
     --muted: #7a7060;
 
-    --ristoranti: #4caf82;
-    --pizza: #e05c3a;
-    --pasticcerie: #9b6fd4;
-    --gelati: #5ab4d6;
-    --vino: #c2185b;
-    --birra: #f5b731;
-    --caffe: #1579b0;
+    --ristoranti: #7bc8a4;
+    --pizza: #f4907a;
+    --pasticcerie: #b89fd4;
+    --gelati: #7ec8e3;
+    --vino: #e8849a;
+    --birra: #f5d080;
+    --caffe: #7aaed6;
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -287,7 +287,7 @@
   <div class="brand">
     <span class="brand-city">Alessandria</span>
     <span class="brand-name">GASTROMANIA!</span>
-    <span class="brand-tagline">Where to eat and where to drink. According to us.</span>
+    <span class="brand-tagline">Dove mangiare e dove bere. Secondo noi.</span>
   </div>
 
   <div class="filters" id="filters">
@@ -309,11 +309,11 @@
     </button>
     <button class="filter-btn active" data-cat="GELATI" onclick="filterCat('GELATI',this)" style="color:var(--gelati)">
       <span class="dot" style="background:var(--gelati)"></span>
-      Gelati | Ice Cream <span class="count-badge" id="cnt-GELATI">0</span>
+      Gelati / Ice Cream <span class="count-badge" id="cnt-GELATI">0</span>
     </button>
     <button class="filter-btn active" data-cat="VINO" onclick="filterCat('VINO',this)" style="color:var(--vino)">
       <span class="dot" style="background:var(--vino)"></span>
-      Vino | Wine <span class="count-badge" id="cnt-VINO">0</span>
+      Vino / Wine <span class="count-badge" id="cnt-VINO">0</span>
     </button>
     <button class="filter-btn active" data-cat="BIRRA" onclick="filterCat('BIRRA',this)" style="color:var(--birra)">
       <span class="dot" style="background:var(--birra)"></span>
@@ -338,7 +338,7 @@
 </div>
 
 <footer>
-  <span>Hotel Londra Alessandria &nbsp;·&nbsp; <em>GASTROMANIA!</em> &nbsp;·&nbsp; aggiornato 2026</span>
+  <span>Hotel Londra Alessandria &nbsp;·&nbsp; <em>GASTROMANIA!</em> &nbsp;·&nbsp; aggiornato 2024</span>
 </footer>
 
 <script>
@@ -440,13 +440,13 @@ const PLACES = [
 ];
 
 const CAT_COLORS = {
-  RISTORANTI: "#4caf82",
-  PIZZA:      "#e05c3a",
-  PASTICCERIE:"#9b6fd4",
-  GELATI:     "#5ab4d6",
-  VINO:       "#c2185b",
-  BIRRA:      "#f5b731",
-  CAFFE:      "#1579b0",
+  RISTORANTI: "#7bc8a4",
+  PIZZA:      "#f4907a",
+  PASTICCERIE:"#b89fd4",
+  GELATI:     "#7ec8e3",
+  VINO:       "#e8849a",
+  BIRRA:      "#f5d080",
+  CAFFE:      "#7aaed6",
 };
 
 const CAT_LABELS = {
@@ -489,24 +489,65 @@ const markers = [];
 const layerGroups = {};
 Object.keys(CAT_COLORS).forEach(c => layerGroups[c] = L.layerGroup().addTo(map));
 
-function makeIcon(color) {
+const CAT_ICONS = {
+  RISTORANTI: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M11 3v7a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V3" stroke="white" stroke-width="2" stroke-linecap="round"/>
+    <path d="M6.5 3v18M15 3c0 0 3 2 3 6s-3 6-3 6v6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`,
+  PIZZA: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M12 2L2 19h20L12 2z" stroke="white" stroke-width="2" stroke-linejoin="round"/>
+    <circle cx="12" cy="13" r="1.5" fill="white"/>
+    <circle cx="9" cy="16" r="1" fill="white"/>
+    <circle cx="15" cy="16" r="1" fill="white"/>
+  </svg>`,
+  PASTICCERIE: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="3" y="11" width="18" height="10" rx="2" stroke="white" stroke-width="2"/>
+    <path d="M7 11V8a5 5 0 0 1 10 0v3" stroke="white" stroke-width="2" stroke-linecap="round"/>
+    <path d="M3 15h18" stroke="white" stroke-width="1.5"/>
+    <path d="M12 7v4M9 9l3-2 3 2" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`,
+  GELATI: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M12 22l4-8H8l4 8z" stroke="white" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M8 14a4 4 0 1 1 8 0" stroke="white" stroke-width="2"/>
+    <circle cx="12" cy="8" r="4" stroke="white" stroke-width="2"/>
+  </svg>`,
+  VINO: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M8 3h8l1 7a5 5 0 0 1-10 0L8 3z" stroke="white" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M12 15v6M9 21h6" stroke="white" stroke-width="2" stroke-linecap="round"/>
+  </svg>`,
+  BIRRA: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M6 3h10l2 18H4L6 3z" stroke="white" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M18 8h2a2 2 0 0 1 0 4h-2" stroke="white" stroke-width="2" stroke-linecap="round"/>
+    <path d="M8 9h6M8 13h4" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+  </svg>`,
+  CAFFE: `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M6 3h10l-2 12H8L6 3z" stroke="white" stroke-width="2" stroke-linejoin="round"/>
+    <path d="M16 7h2a2 2 0 0 1 0 4h-2" stroke="white" stroke-width="2" stroke-linecap="round"/>
+    <path d="M4 17h14M7 20h8" stroke="white" stroke-width="2" stroke-linecap="round"/>
+  </svg>`,
+};
+
+function makeIcon(color, cat) {
+  const svg = CAT_ICONS[cat] || CAT_ICONS.RISTORANTI;
   return L.divIcon({
     className: '',
     html: `<div style="
-      width:16px;height:16px;
+      width:28px;height:28px;
       background:${color};
       border-radius:50%;
-      border:2px solid rgba(255,255,255,0.7);
-    "></div>`,
-    iconSize: [16,16],
-    iconAnchor: [8,8],
-    popupAnchor: [0,-12],
+      border:2px solid white;
+      display:flex;align-items:center;justify-content:center;
+      padding:5px;
+    ">${svg}</div>`,
+    iconSize: [28,28],
+    iconAnchor: [14,14],
+    popupAnchor: [0,-16],
   });
 }
 
 PLACES.forEach((p, i) => {
   const color = CAT_COLORS[p.cat];
-  const marker = L.marker([p.lat, p.lng], { icon: makeIcon(color) });
+  const marker = L.marker([p.lat, p.lng], { icon: makeIcon(color, p.cat) });
 
   const descHtml = p.desc
     ? `<div class="popup-desc">${p.desc.replace(/(https?:\/\/\S+|www\.\S+)/g, u => `<a href="${u.startsWith('http')?u:'https://'+u}" target="_blank">${u}</a>`)}</div>`
